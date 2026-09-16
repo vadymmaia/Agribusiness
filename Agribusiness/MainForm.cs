@@ -141,9 +141,60 @@ namespace Agribusiness
         // Кнопка: Звіт
         private void button4_Click(object? sender, EventArgs e)
         {
-            double totalTons = _allProducts.Sum(p => p.QuantityInTons);
-            double totalPrice = _allProducts.Sum(p => p.QuantityInTons * p.PricePerTon);
-            MessageBox.Show($"Всього найменувань: {_allProducts.Count}\nЗагальна вага: {totalTons} т.\nЗагальна вартість: {totalPrice:F2} грн.", "Звіт про агропродукцію", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (_allProducts == null || _allProducts.Count == 0)
+            {
+                MessageBox.Show("Немає даних для формування звіту.", "Увага", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "Текстовий файл (*.txt)|*.txt";
+                saveFileDialog.Title = "Зберегти звіт про агропродукцію";
+                saveFileDialog.FileName = $"Звіт_Агропродукція_{DateTime.Now:yyyy-MM-dd}.txt";
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        double totalTons = _allProducts.Sum(p => p.QuantityInTons);
+                        double totalPrice = _allProducts.Sum(p => p.QuantityInTons * p.PricePerTon);
+
+                        using (StreamWriter writer = new StreamWriter(saveFileDialog.FileName, false, System.Text.Encoding.UTF8))
+                        {
+                            writer.WriteLine("==================================================");
+                            writer.WriteLine("             ЗВІТ ПРО АГРОПРОДУКЦІЮ              ");
+                            writer.WriteLine($"Дата формування: {DateTime.Now:dd.MM.yyyy HH:mm:ss}");
+                            writer.WriteLine("==================================================");
+                            writer.WriteLine();
+
+                            writer.WriteLine(string.Format("{0,-20} | {1,-10} | {2,-12} | {3,-15}", "Назва", "Обсяг (т)", "Ціна/т (грн)", "Склад"));
+                            writer.WriteLine(new string('-', 68));
+
+                            foreach (var item in _allProducts)
+                            {
+                                writer.WriteLine(string.Format("{0,-20} | {1,-10:F2} | {2,-12:F2} | {3,-15}",
+                                    item.ProductName ?? "-",
+                                    item.QuantityInTons,
+                                    item.PricePerTon,
+                                    item.WarehouseLocation ?? "-"));
+                            }
+
+                            writer.WriteLine(new string('-', 68));
+                            writer.WriteLine($"Всього найменувань : {_allProducts.Count}");
+                            writer.WriteLine($"Загальний обсяг    : {totalTons:F2} тонн");
+                            writer.WriteLine($"Загальна вартість  : {totalPrice:F2} грн.");
+                            writer.WriteLine("==================================================");
+                        }
+
+                        MessageBox.Show("Звіт успішно збережено!", "Успіх", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Помилка при збереженні файлу: {ex.Message}", "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
         }
 
         // Кнопка: Назад у меню
@@ -155,5 +206,28 @@ namespace Agribusiness
         private void textBox1_TextChanged(object? sender, EventArgs e) => ApplyFilterAndSort();
 
         private void comboBox1_SelectedIndexChanged(object? sender, EventArgs e) => ApplyFilterAndSort();
+
+        private void MainForm_Load_1(object sender, EventArgs e)
+        {
+            if (dataGridView1 != null)
+            {
+                dataGridView1.ReadOnly = true; // Забороняє редагування клітинок
+                dataGridView1.AllowUserToAddRows = false; // Прибирає порожній рядок знизу
+                dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect; // Виділяє рядок повністю
+            }
+
+            if (comboBox1 != null && comboBox1.Items.Count == 0)
+            {
+                comboBox1.Items.AddRange(new string[] { "Без сортування", "За обсягом (спадання)", "За ціною (спадання)" });
+                comboBox1.SelectedIndex = 0;
+            }
+
+            LoadDataToGrid();
+        }
+
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
     }
 }
